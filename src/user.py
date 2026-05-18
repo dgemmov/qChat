@@ -23,15 +23,15 @@ def CheckUser():
                NAME = NAME[:9]+"..."
 
 def UsernameChange():
+     global NAME
      console.clear()
-     NewUsername = input("> ")
+     NewUsername = input(f"Your current username is {NAME}\n> ")
      if NewUsername:
           if len(NewUsername) > 12:
                print("NO MORE THAN 12 SYMBOLS!")
                console.clear()
                UsernameChange()
           else:
-               global NAME
                NAME = NewUsername
                
                print("You have changed your username")
