@@ -10,7 +10,10 @@ def SetClientMode():
      toConnect = input("Enter IP to connect: ")
      if toConnect:
           Client = True
-          RunClient(toConnect)
+          try: # 18.05.2026 | If user entered wrong IP - it will send him error
+               RunClient(toConnect)
+          except Exception as e:
+               print(e)
 
 def RunClient(IP: str = "127.0.0.1"):
      try:
