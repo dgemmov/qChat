@@ -15,7 +15,7 @@ def SetClientMode():
 def RunClient(IP: str = "127.0.0.1"):
      try:
           global client_sock, server_addr
-
+          
           client_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
           client_sock.bind(("0.0.0.0", 5006)) # If you run it for tests - just change this port
           server_addr = (IP, 5005)

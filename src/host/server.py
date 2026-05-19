@@ -20,7 +20,7 @@ def RunServer():
      server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
      server_sock.bind(("0.0.0.0", 5005))
      
-     port.open_port(5005)
+     # port.open_port(5005)
      
      console.clear()
      public_ip = requests.get('https://api.ipify.org').text

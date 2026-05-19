@@ -1,23 +1,23 @@
 import os, keyboard
-from src import control
+from src import control, packet
 from src.host import client, server, var
 from src import user
 
 fileData = None
 reqFile = None
 
-def writeFileToBytes(path: str, receiver: str):
+def writeFileToBytes(receiver: str, path: str = "Unknown.qChat"):
      global fileData
      with open(path, 'rb') as f:
           fileData = f.read()
-          server.server_sock.sendto(var.file_flag.encode() + fileData, receiver)
+          server.server_sock.sendto(var.file_flag.encode() + fileData + var.file_flag_name.encode() + path.encode(), receiver)
 
 def sendFileRequest(senderName: str, receiver: str, filename: str, size: float):
      if(size > 1000):
-          print("You cant send any file that bigger then 1000 bytes.")
+          print(f"You cant send any file that bigger then {packet.packetSize} bytes.")
           return
      
-     msg = f"\n{senderName} has sent you file '{filename}' size: {round(size, 2)}\nType 1 to Accept and 0 to Reject file"
+     msg = f"\n{senderName} has sent you file '{filename}' size: {round(size, 2)} byte(-s)"
      
      if user.getUserMode() == "server":
           sender_data = server.server_sock
@@ -25,17 +25,23 @@ def sendFileRequest(senderName: str, receiver: str, filename: str, size: float):
           sender_data = client.client_sock
      else:
           return
-
-     writeFileToBytes(path=filename, receiver=receiver)
+     
      sender_data.sendto(msg.encode(), receiver)
      sender_data.sendto(var.code[0]['code'].encode(), receiver)
+     packet.SendTimeout()
+     writeFileToBytes(receiver=receiver, path=filename)
 
-def AwaitChoice():
-     choice = str(input("=> "))
-     if choice == control.accept_file_key:
-          var.code[0]['state'] = True
-     else:
-          var.code[0]['state'] = False
+def FileSave(name: str, data: bytes): # Поменяли тип на bytes
+     download_path = "downloads"
+     if not os.path.exists(download_path):
+          os.makedirs(download_path)
+
+     with open(f"{download_path}/{name}", "wb") as file:
+          try:
+               file.write(data)
+               print(f"\nFile has been downloaded success! Check out {download_path} folder.")
+          except Exception as e:
+               print(f"\nError while download has accured: {e}")
 
 def sendFileToUser(receiver: str):
      if user.getUserMode() == "server":

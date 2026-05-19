@@ -1,11 +1,21 @@
 from src.host import client, server, var
-from src import user
+from src import user, control, packet
 from src.file import sendFile
 import os
 
+sentFileData = None
+sentFileName = None
+
 def MessageHandler():
+     global sentFileName, sentFileData
      while 1:  
           msg = input("> ")
+
+          if var.code[0]['state'] == True:
+               if msg == control.accept_file_key:
+                    print(sentFileName)
+                    sendFile.FileSave(name=sentFileName, data=sentFileData)
+               var.code[0]['state'] = False
 
           if msg.startswith('$'):
                for v in var.code:
@@ -19,12 +29,13 @@ def MessageHandler():
                
                if msg == "$sendfile":
                     currentUser = str(input("Who is receiver: "))
-                    filePath = str(input("Path to your file (<= 25mb): "))
+                    filePath = str(input(f"Path to your file (limit is {packet.packetSize} bytes): "))
                     if os.path.isfile(filePath):
                          size_in_bytes = os.path.getsize(filePath)
                          for c in server.clients:
                               if currentUser == c['name']:
-                                   # sendFile.sendFileRequest(server.getUserName(user.returnPersonalIP()), c['ip'], filePath, size_in_bytes)
+                                   sentFileName = filePath
+                                   # sendFile.sendFileRequest(server.getUserName(user.returnPersonalIP()), c['ip'], filePath, size_in_bytes) # Back it when it will be fixed
                                    sendFile.sendFileRequest('127.0.0.1', c['ip'], filePath, size_in_bytes)
                               else:
                                    print("Undefiend user")
@@ -43,7 +54,7 @@ def RecieveHandler():
      while 1:
           if server.Server:
                try:
-                    data, addr = server.server_sock.recvfrom(1024)
+                    data, addr = server.server_sock.recvfrom(packet.packetSize)
                except:
                     continue
 
@@ -64,15 +75,30 @@ def RecieveHandler():
 
           if client.Client:
                try:
-                    data, addr = client.client_sock.recvfrom(1024)
-                    print(f"{data.decode()}")
+                    data, addr = client.client_sock.recvfrom(packet.packetSize)
+
+                    sentData = data.decode(errors='ignore')
+                    if data.startswith(var.file_flag.encode()): # Here is Gemini Code
+                         global sentFileData, sentFileName
+                        
+                         flag_name_bytes = var.file_flag_name.encode()
+                         flag_name_index = data.find(flag_name_bytes)
+                         
+                         if flag_name_index > len(var.file_flag.encode()):
+                              sentFileData = data[len(var.file_flag.encode()):flag_name_index]
+                              sentFileName = data[flag_name_index + len(flag_name_bytes):].decode(errors='ignore')
+                              
+                              print("Accept file? (y/n)")
+                              var.code[0]['state'] = True
+                              continue
+                         else:
+                              print("Critical error! File name flag not found.")
+                              continue
+
+                    if sentData.startswith(var.code[0]['code']):
+                         continue # Just skip
+
+                    print(f"{data.decode()}") # In the end cause check continue which is upper than sending
+
                except:
                     continue
-
-               if data.decode().strip() == var.code[0]['code']:
-                    sendFile.AwaitChoice()
-
-               sentFileByte = data.decode(errors='ignore')
-               if sentFileByte.startswith(var.file_flag):
-                    sentFileData = sentFileByte[len(var.file_flag):] 
-                    print(sentFileData) 
