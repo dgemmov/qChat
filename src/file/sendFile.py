@@ -6,7 +6,7 @@ from src import user
 fileData = None
 reqFile = None
 
-def writeFileToBytes(receiver: str, sock, path: str = "Unknown.qChat"):
+def writeFileToBytes(receiver, sock, path: str = "Unknown.qChat"):
      global fileData
      with open(path, 'rb') as f:
           fileData = f.read()

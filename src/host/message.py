@@ -54,12 +54,15 @@ def MessageHandler():
                     filePath = str(input(f"Path to your file (limit is {packet.packetSize} bytes): "))
                     if os.path.isfile(filePath):
                          size_in_bytes = os.path.getsize(filePath)
-                         for c in server.clients:
-                              if currentUser == c['name']:
-                                   sentFileName = filePath
-                                   sendFile.sendFileRequest(user.returnPersonalIP(), c['ip'], filePath, size_in_bytes)
-                              else:
-                                   print("Undefined user")
+                         if server.Server:
+                              for c in server.clients:
+                                   if currentUser == c['name']:
+                                        sentFileName = filePath
+                                        sendFile.sendFileRequest(user.returnPersonalIP(), c['ip'], filePath, size_in_bytes)
+                                   else:
+                                        print("Undefined user")
+                         elif client.Client:
+                              pass # here will be code where client send request to server to check is exist this user or not
                     else:
                          print("Undefined file")
                msg = None
