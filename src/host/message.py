@@ -6,6 +6,28 @@ import os
 sentFileData = None
 sentFileName = None
 
+def CheckMessage(data):
+     sentData = data.decode(errors='ignore')
+     if data.startswith(var.file_flag.encode()): # Here is Gemini Code
+          global sentFileData, sentFileName
+          
+          flag_name_bytes = var.file_flag_name.encode()
+          flag_name_index = data.find(flag_name_bytes)
+          
+          if flag_name_index > len(var.file_flag.encode()):
+               sentFileData = data[len(var.file_flag.encode()):flag_name_index]
+               sentFileName = data[flag_name_index + len(flag_name_bytes):].decode(errors='ignore')
+               
+               print("Accept file? (y/n)")
+               var.code[0]['state'] = True
+               return True
+          else:
+               print("Critical error! File name flag not found.")
+               return True
+
+     if sentData.startswith(var.code[0]['code']):
+          return True # Just skip
+
 def MessageHandler():
      global sentFileName, sentFileData
      while 1:  
@@ -54,6 +76,9 @@ def RecieveHandler():
           if server.Server:
                try:
                     data, addr = server.server_sock.recvfrom(packet.packetSize)
+
+                    if CheckMessage(data): # Intercepts bytes and check it on flag
+                         continue 
                except:
                     continue
 
@@ -76,26 +101,8 @@ def RecieveHandler():
                try:
                     data, addr = client.client_sock.recvfrom(packet.packetSize)
 
-                    sentData = data.decode(errors='ignore')
-                    if data.startswith(var.file_flag.encode()): # Here is Gemini Code
-                         global sentFileData, sentFileName
-                        
-                         flag_name_bytes = var.file_flag_name.encode()
-                         flag_name_index = data.find(flag_name_bytes)
-                         
-                         if flag_name_index > len(var.file_flag.encode()):
-                              sentFileData = data[len(var.file_flag.encode()):flag_name_index]
-                              sentFileName = data[flag_name_index + len(flag_name_bytes):].decode(errors='ignore')
-                              
-                              print("Accept file? (y/n)")
-                              var.code[0]['state'] = True
-                              continue
-                         else:
-                              print("Critical error! File name flag not found.")
-                              continue
-
-                    if sentData.startswith(var.code[0]['code']):
-                         continue # Just skip
+                    if CheckMessage(data): # Intercepts bytes and check it on flag
+                         continue 
 
                     print(f"{data.decode()}") # In the end cause check continue which is upper than sending
 

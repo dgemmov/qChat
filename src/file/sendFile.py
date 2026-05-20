@@ -10,7 +10,7 @@ def writeFileToBytes(receiver: str, sock, path: str = "Unknown.qChat"):
      global fileData
      with open(path, 'rb') as f:
           fileData = f.read()
-          sock.server_sock.sendto(var.file_flag.encode() + fileData + var.file_flag_name.encode() + path.encode(), receiver)
+          sock.sendto(var.file_flag.encode() + fileData + var.file_flag_name.encode() + path.encode(), receiver)
 
 def sendFileRequest(senderName: str, receiver: str, filename: str, size: float):
      if(size > 1000):
