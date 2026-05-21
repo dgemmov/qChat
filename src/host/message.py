@@ -58,7 +58,7 @@ def MessageHandler():
                               for c in server.clients:
                                    if currentUser == c['name']:
                                         sentFileName = filePath
-                                        sendFile.sendFileRequest(user.returnPersonalIP(), c['ip'], filePath, size_in_bytes)
+                                        sendFile.sendFileRequest(user.returnPersonalIP(), c['ip'], filePath, size_in_bytes, "None") # Fixed error with file sending
                                    else:
                                         print("Undefined user")
                          elif client.Client:
