@@ -17,7 +17,7 @@ def RunClient(IP: str = "127.0.0.1"):
           global client_sock, server_addr
           
           client_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-          client_sock.bind(("0.0.0.0", 5006)) # If you run it for tests - just change this port
+          client_sock.bind(("0.0.0.0", 5005)) # If you run it for tests - just change this port
           server_addr = (IP, 5005)
           
           client_sock.sendto(f"{user.NAME} has been connected".encode(), server_addr)
