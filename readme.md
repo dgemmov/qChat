@@ -24,7 +24,7 @@
 
 ## 📸 Preview
 <p align="center">
-  <img src="screenshot.png" alt="Main Menu" width="85%">
+  <img src="screenshot.png" alt="Main Menu" width="100%">
 </p>
 
 ---
