@@ -40,15 +40,29 @@ def UpdateJSON(row: str, data):
      with open(CONFIG_FILE, "w", encoding="utf-8") as file:
           json.dump(config, file, indent=5, ensure_ascii=False)
 
+def InitJSON():
+     config = {
+          "port": 5005,
+          "username": user.NAME,
+          "symbol": ">",
+          "symbolColor": "WHITE"
+     }
+     
+     with open(CONFIG_FILE, "w", encoding="utf-8") as file:
+          json.dump(config, file, indent=5, ensure_ascii=False)
+
 def ReadJSON():
      global INPUT_SYMBOL, INPUT_SYMBOL_COLOR, MAIN_COLOR
      config = None
-     with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-          config = json.load(f)
-
-     user.NAME = config['username']
-     packet.port = config['port']
-     COLOR_NAME = config['symbolColor']
-     INPUT_SYMBOL_COLOR = getattr(Fore, COLOR_NAME, Fore.WHITE)
-     MAIN_COLOR = getattr(Fore, COLOR_NAME, Fore.WHITE)
-     INPUT_SYMBOL = f"{INPUT_SYMBOL_COLOR}{config['symbol']}{Fore.RESET} "
+     try:
+          with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+               config = json.load(f)
+          
+          user.NAME = config['username']
+          packet.port = config['port']
+          COLOR_NAME = config['symbolColor']
+          INPUT_SYMBOL_COLOR = getattr(Fore, COLOR_NAME, Fore.WHITE)
+          MAIN_COLOR = getattr(Fore, COLOR_NAME, Fore.WHITE)
+          INPUT_SYMBOL = f"{INPUT_SYMBOL_COLOR}{config['symbol']}{Fore.RESET} "
+     except:
+          InitJSON()

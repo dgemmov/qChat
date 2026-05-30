@@ -2,3 +2,7 @@
 icon.png
 test.txt
 user.txt
+config.json
+main.spec
+build/
+dist/

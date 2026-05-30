@@ -10,8 +10,8 @@ def settingsMenu():
      print(f"""
 [{serializer.MAIN_COLOR} 1 {serializer.MAIN_RESET}] Change username
 [{serializer.MAIN_COLOR} 2 {serializer.MAIN_RESET}] Change port
-[{serializer.MAIN_COLOR} 3 {serializer.MAIN_RESET}] Change input symbol
-[{serializer.MAIN_COLOR} 4 {serializer.MAIN_RESET}] Change symbol color
+[{serializer.MAIN_COLOR} 3 {serializer.MAIN_RESET}] Change prefix
+[{serializer.MAIN_COLOR} 4 {serializer.MAIN_RESET}] Change accent
 [{serializer.MAIN_COLOR} 0 {serializer.MAIN_RESET}] Back to menu
 """)
      choice = int(input(f"{serializer.INPUT_SYMBOL}"))
