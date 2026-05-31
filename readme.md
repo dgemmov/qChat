@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="icon.png" width="128" alt="qChat Logo" style="border-radius: 50%; box-shadow: 0 4px 20px rgba(0,0,0,0.3); background: radial-gradient(circle, rgba(255,0,128,0.2) 0%, rgba(0,255,255,0.2) 100%);">
+  <img src="icon.ico" width="128" alt="qChat Logo" style="border-radius: 50%; box-shadow: 0 4px 20px rgba(0,0,0,0.3); background: radial-gradient(circle, rgba(255,0,128,0.2) 0%, rgba(0,255,255,0.2) 100%);">
 </p>
 
 <h1 align="center">
@@ -65,6 +65,8 @@ Messages starting with `$` are reserved for system operations and are not broadc
     ├── port.py                  # Port scanner and manager (defaults to 5005)
     ├── user.py                  # Nickname manager and connection state definitions
     ├── tag.py                   # Tag templates
+    ├── settings.py              # Settings
+    ├── serializer.py            # JSON Reader and Initializer
     ├── crypto/
     │   ├── crypto_main.py       # Core cryptographic functions
     │   └── key_generation.py    # Key generation and management data
