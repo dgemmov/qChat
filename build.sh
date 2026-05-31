@@ -1,0 +1,1 @@
+python -m nuitka --standalone --onefile --windows-icon-from-ico=icon.ico main.py
