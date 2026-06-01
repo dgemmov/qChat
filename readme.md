@@ -92,7 +92,7 @@ Messages starting with `$` are reserved for system operations and are not broadc
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com
+   git clone https://github.com/qualzed/qChat
    cd qChat
    ```
 
