@@ -1,7 +1,10 @@
 from src.host import server, client
 from src import user, console, port, tag, packet, serializer, settings
-import time, os
+import time, sys, subprocess, os
 from colorama import just_fix_windows_console, Fore
+
+if os.name == "nt":
+     just_fix_windows_console()
 
 devUserMode: bool = False
 
@@ -44,7 +47,6 @@ def Launch():
 
 def devMenu():
      global devUserMode
-     serializer.MAIN_COLOR = Fore.RED # Red color if you are in developer mode
      devUserMode = not devUserMode
      packet.port = packet.port + 1 # changing default port
 
@@ -52,21 +54,44 @@ def devMenu():
      console.clear()
      print(_devMenu + menu())
 
-     choice = int(input(f"{serializer.INPUT_SYMBOL}"))
-     if choice == 0:
-          os.system(f'start cmd /k "python main.py -m dev -p {packet.port}"')
-          packet.port = packet.port - 1
-          user.NAME = "devServer"
-          server.RunServer()
-
+     try:
+          choice = int(input(f"{serializer.INPUT_SYMBOL}"))
+     except ValueError:
+          print(f"{tag.error} Invalid input! Please select and enter the number.")
+          time.sleep(1)
+          devMenu()
+          return 
+     match(choice):
+          case 0:
+               args = [
+               "-m", 
+               "dev", 
+               "-p", 
+               str(packet.port)
+               ]
+               subprocess.Popen([sys.executable, "main.py"] + args,
+                                   creationflags=subprocess.CREATE_NEW_CONSOLE)
+               packet.port = packet.port - 1
+               user.NAME = "devServer"
+               server.RunServer()
+          case _:
+               print(f"{tag.error} Invalid input! Please select and enter the number.")
+               time.sleep(1)
+               Menu()
+          
 def Menu():
-     if os.name == "nt":
-          just_fix_windows_console()
 
      console.clear()
      print(menu())
+
+     try:
+          choice = int(input(f"{serializer.INPUT_SYMBOL}"))
+     except ValueError:
+          print(f"{tag.error} Invalid input! Please select and enter the number.")
+          time.sleep(1)
+          Menu()
+          return
      
-     choice = int(input(f"{serializer.INPUT_SYMBOL}"))
      match(choice):
           case 1:
                server.RunServer()
@@ -78,3 +103,7 @@ def Menu():
                port.open_port(packet.port)
           case 999:
                devMenu()
+          case _:
+               print(f"{tag.error} Invalid input! Please select and enter the number.")
+               time.sleep(1)
+               Menu()

@@ -1,7 +1,4 @@
-import os
+from colorama import ansi
 
 def clear():
-     if os.name == "nt": # 18.05.2026
-          os.system("cls") # Only for windows (maybe)
-     else:
-          os.system("clear")
+     print(ansi.clear_screen(), end="")

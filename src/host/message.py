@@ -2,30 +2,44 @@ from src.host import client, server, var
 from src import user, control, packet, tag, serializer, console, menu
 from src.file import sendFile
 from src.crypto import key_generation, crypto_main
+from colorama import ansi, Cursor
 import datetime
 import os
 
+sentFileSender = "Unknown"
 sentFileData = None
 sentFileName = None
 ReceiverStatus = False
 
 def CheckMessage(data):
+     if not data: return True
+     
      sentData = data.decode(errors='ignore')
      if data.startswith(var.file_flag.encode()): # Here is Gemini Code
-          global sentFileData, sentFileName
+          global sentFileData, sentFileName, sentFileSender
           
           flag_name_bytes = var.file_flag_name.encode()
+          flag_sender_bytes = var.file_flag_sender.encode()
+
           flag_name_index = data.find(flag_name_bytes)
+          flag_sender_index = data.find(flag_sender_bytes)
           
-          if flag_name_index > len(var.file_flag.encode()):
+          if flag_name_index > len(var.file_flag.encode()) and flag_sender_index > flag_name_index:
                sentFileData = data[len(var.file_flag.encode()):flag_name_index]
-               sentFileName = data[flag_name_index + len(flag_name_bytes):].decode(errors='ignore')
                
-               print("Accept file? (y/n)")
-               var.code[0]['state'] = True
+               sentFilePath = data[flag_name_index + len(flag_name_bytes):flag_sender_index].decode(errors='ignore')
+               sentFileName = os.path.basename(sentFilePath)
+               
+               sentFileSender = data[flag_sender_index + len(flag_sender_bytes):].decode(errors='ignore').strip()
+
+               sendFile.getFileRequest(filename=sentFileName, data=sentFileData, senderName=sentFileSender)               
+               request = next((v for v in var.code if v['code'] == '$filerequest'), None)
+               if request:
+                    request['state'] = True
+
                return True
           else:
-               print(f"{tag.error}Critical error! File name flag not found.")
+               print(f"{tag.error}File name flag not found.")
                return True
 
      if sentData.startswith(var.server_send_kick):
@@ -63,35 +77,49 @@ def CheckMessage(data):
                          server.server_sock.sendto(var.room_key_flag.encode() + encrypted_room_key, c['ip'])
                return True
 
-     if sentData.startswith(var.code[0]['code']):
+     if any(sentData.startswith(v['code']) for v in var.code):
           return True # Just skip
 
 def MessageHandler():
      global sentFileName, sentFileData, msg
      while 1:  
-          msg = input(f"\033[999;1H{serializer.INPUT_SYMBOL}")
-          formatted_msg = f"[{datetime.datetime.now().strftime("%I:%M %p").lstrip("0")}] You: {msg}"
-          print(f"\033[F\033[K{formatted_msg}")
+          timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+          msg = input(f"{serializer.INPUT_SYMBOL}")
 
-          if var.code[0]['state'] == True:
-               if msg == control.accept_file_key:
-                    print(sentFileName)
-                    sendFile.FileSave(name=sentFileName, data=sentFileData)
-               var.code[0]['state'] = False
+          if not msg.strip():
+               continue
 
           if msg.startswith('$'):
-               for v in var.code:
-                    if msg == var.code[0]['code']:
-                         v['state'] = not v['state']
-                         sendFile.sendFileToUser()
+               print(Cursor.UP(1) + "\r" + ansi.clear_line(), end="")
+               print(msg)
 
-               if msg == "$userlist":
+               cmd_list = ["$help", "$cmds", "$userlist", "$sendfile", "$clear", "$exit"]
+
+               code = next((v for v in var.code if v['code'] == msg), None)
+               if code != None:
+                    code['state'] = not code['state']
+                    sendFile.sendFileToUser()
+                    cmd_list.append(msg)
+               
+               if msg == "$help" or msg == "$cmds":
+                    hint = (
+                         f"\n{tag.info} Available commands:\n"
+                         f" {serializer.MAIN_COLOR}$help{serializer.MAIN_RESET} or {serializer.MAIN_COLOR}$cmds{serializer.MAIN_RESET} - Show this exact message.\n"
+                         f" {serializer.MAIN_COLOR}$userlist{serializer.MAIN_RESET} - Show all connected users.\n"
+                         f" {serializer.MAIN_COLOR}$sendfile{serializer.MAIN_RESET} - Send a file to somebody.\n"
+                         f" {serializer.MAIN_COLOR}$clear{serializer.MAIN_RESET} - Clear your chat history (client-side).\n"
+                         f" {serializer.MAIN_COLOR}$exit{serializer.MAIN_RESET} - Disconnect."
+                    )
+                    print(hint)
+
+               elif msg == "$userlist":
                     for c in server.clients:
                          print(f"{c['ip']} {c['name']}\n")
                
-               if msg == "$sendfile":
+               elif msg == "$sendfile":
                     currentUser = str(input("Who is receiver: "))
-                    filePath = str(input(f"Path to your file (limit is {packet.packetSize} bytes): "))
+                    requestPath = str(input(f"Path to your file (limit is {packet.packetSize} bytes): "))
+                    filePath = requestPath.strip('"\'')
                     if os.path.isfile(filePath):
                          size_in_bytes = os.path.getsize(filePath)
                          if server.Server:
@@ -103,14 +131,13 @@ def MessageHandler():
                                         print(f"{tag.warning}Undefined user")
                          elif client.Client:
                               sendFile.sendFileRequest(user.returnUsername(), '0.0.0.0', filePath, size_in_bytes, currentUser)
-                              pass # here will be code where client send request to server to check is exist this user or not
                     else:
                          print(f"{tag.warning}Undefined file")
 
-               if msg == "$clear": # only visual chat history cleaning
+               elif msg == "$clear": # only visual chat history cleaning
                     console.clear()
 
-               if msg == "$exit": # Server disconnect
+               elif msg == "$exit": # Server disconnect
                     global RecieverStatus
                     RecieverStatus = False
 
@@ -118,14 +145,20 @@ def MessageHandler():
                     console.clear()
                     menu.Menu()
 
-               msg = None
+               elif msg not in cmd_list:
+                    print(f"{tag.error} Unknown command: {serializer.MAIN_COLOR}{msg}{serializer.MAIN_RESET}. Check {serializer.MAIN_COLOR}$help{serializer.MAIN_RESET} for commands.")
+
+               continue
+
+          formatted_msg = f"[{timestamp}] You: {msg}"
+          print(f"\033[F\033[K{formatted_msg}")
           
           if msg != None:
                if client.Client:
-                    client.client_sock.sendto(crypto_main.returnEncrypted(f"{user.NAME}: {msg}"), client.server_addr)
+                    client.client_sock.sendto(crypto_main.returnEncrypted(f"[{timestamp}] {user.NAME}: {msg}"), client.server_addr)
                if server.Server:
                     for c in server.clients:
-                         server.server_sock.sendto(crypto_main.returnEncrypted(f"{user.NAME}: {msg}"), c['ip'])
+                         server.server_sock.sendto(crypto_main.returnEncrypted(f"[{timestamp}] {user.NAME}: {msg}"), c['ip'])
 
 def RecieveHandler(status: bool):
      global RecieverStatus

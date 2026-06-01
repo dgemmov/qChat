@@ -1,6 +1,8 @@
 # Cache
 **/__pycache__/
 *.pyc
+.vscode/
+downloads/
 # Build
 *.build/
 *.dist/
@@ -12,3 +14,4 @@ test.txt
 user.txt
 config.json
 main.spec
+config.json
