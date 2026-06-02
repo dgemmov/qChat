@@ -46,9 +46,11 @@ def Launch():
      Menu()
 
 def devMenu():
+     from src.host import var
      global devUserMode
      devUserMode = not devUserMode
      packet.port = packet.port + 1 # changing default port
+     var.DEBUG = True
 
      menu()
      console.clear()

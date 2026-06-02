@@ -11,7 +11,7 @@ sentFileData = None
 sentFileName = None
 ReceiverStatus = False
 
-def CheckMessage(data):
+def CheckMessage(data, addr=None):
      if not data: return True
      
      sentData = data.decode(errors='ignore')
@@ -53,9 +53,10 @@ def CheckMessage(data):
      if client.Client:
           if data.startswith(var.crypto_key_flag.encode()):
                server_pub_bytes = data[len(var.crypto_key_flag.encode()):]
-               client_pub_bytes = crypto_main.generateDHKeys()
+               client_pub_bytes, client_private_key = crypto_main.generateDHKeys()
+               client_private_dh = client_private_key
 
-               client.temp_cipher = crypto_main.deriveTemporaryKey(server_pub_bytes) # Create a temporary cipher on the client side
+               client.temp_cipher = crypto_main.deriveTemporaryKey(server_pub_bytes, client_private_dh) # Create a temporary cipher on the client side
                client.client_sock.sendto(var.client_pub_flag.encode() + client_pub_bytes, client.server_addr)
                return True
 
@@ -68,13 +69,35 @@ def CheckMessage(data):
      if server.Server:
           if data.startswith(var.client_pub_flag.encode()):
                client_pub_bytes = data[len(var.client_pub_flag.encode()):]
-               temp_cipher = crypto_main.deriveTemporaryKey(client_pub_bytes)
+               user_ip = addr[0] if isinstance(addr, tuple) else addr
+               target = next((c for c in server.clients if (c['ip'][0] if isinstance(c['ip'], tuple) else c['ip']) == user_ip), None)
+
+               fallback_key = server.clients[-1]['private_key'] if server.clients else None
+               private_key = target['private_key'] if (target and 'private_key' in target) else fallback_key
+               
+               if getattr(var, 'DEBUG', True):
+                    print(f"\n{tag.info} Received a pub_key from {addr}. Belongs to {target['name'] if target else 'nobody'}")
+
+               if private_key:
+                    temp_cipher = crypto_main.deriveTemporaryKey(client_pub_bytes, target['private_key'])
+               else:
+                    temp_cipher = None
+                    if getattr(var, 'DEBUG', True):
+                         print(f"{tag.error} Couldn't find any client with IP {addr[0]}!")
                
                if temp_cipher:
+                    if getattr(var, 'DEBUG', True):
+                         print(f"{tag.success}Successfully created a temp_cipher for {addr}!")
+
                     from src.crypto import key_generation
+                    if not key_generation.key:
+                         crypto_main.generateRoomKey()
+
                     encrypted_room_key = temp_cipher.encrypt(key_generation.key.encode())
-                    for c in server.clients:
-                         server.server_sock.sendto(var.room_key_flag.encode() + encrypted_room_key, c['ip'])
+                    if addr:
+                         server.server_sock.sendto(var.room_key_flag.encode() + encrypted_room_key, addr)
+                         if getattr(var, 'DEBUG', True):
+                              print(f"{tag.info} Sent encrypted_room_key to {addr}")
                return True
 
      if any(sentData.startswith(v['code']) for v in var.code):
@@ -123,12 +146,12 @@ def MessageHandler():
                     if os.path.isfile(filePath):
                          size_in_bytes = os.path.getsize(filePath)
                          if server.Server:
-                              for c in server.clients:
-                                   if currentUser == c['name']:
-                                        sentFileName = filePath
-                                        sendFile.sendFileRequest(user.returnUsername(), c['ip'], filePath, size_in_bytes, "None") # Fixed error with file sending
-                                   else:
-                                        print(f"{tag.warning}Undefined user")
+                              target = next((c for c in server.clients if c['name'] == currentUser), None)
+                              if target:
+                                   sentFileName = filePath
+                                   sendFile.sendFileRequest(user.returnUsername(), target['ip'], filePath, size_in_bytes, "None") # Fixed error with file sending
+                              else:
+                                   print(f"{tag.warning}Undefined user")
                          elif client.Client:
                               sendFile.sendFileRequest(user.returnUsername(), '0.0.0.0', filePath, size_in_bytes, currentUser)
                     else:
@@ -154,11 +177,18 @@ def MessageHandler():
           print(f"\033[F\033[K{formatted_msg}")
           
           if msg != None:
+               message = f"[{timestamp}] {user.NAME}: {msg}"
+               encrypted_message = crypto_main.returnEncrypted(message)
+
+               if encrypted_message == None:
+                    print(f"{tag.warning} Wait awhile... Getting your connection secured...")
+                    continue
+
                if client.Client:
-                    client.client_sock.sendto(crypto_main.returnEncrypted(f"[{timestamp}] {user.NAME}: {msg}"), client.server_addr)
+                    client.client_sock.sendto(encrypted_message, client.server_addr)
                if server.Server:
                     for c in server.clients:
-                         server.server_sock.sendto(crypto_main.returnEncrypted(f"[{timestamp}] {user.NAME}: {msg}"), c['ip'])
+                         server.server_sock.sendto(encrypted_message, c['ip'])
 
 def RecieveHandler(status: bool):
      global RecieverStatus
@@ -168,42 +198,56 @@ def RecieveHandler(status: bool):
                try:
                     data, addr = server.server_sock.recvfrom(packet.packetSize)
 
-                    if CheckMessage(data): # Intercepts bytes and check it on flag
+                    if CheckMessage(data, addr): # Intercepts bytes and check it on flag
                          continue 
-               except:
+               except Exception as e:
+                    if getattr(var, 'DEBUG', True):
+                         print(f"{tag.error}Caught server exception while receiving data: {e}")
                     continue
+               
+               try:
+                    user_ip = addr[0] if isinstance(addr, tuple) else addr
+                    all_ips = [(c['ip'][0] if isinstance(c['ip'], tuple) else c['ip']) for c in server.clients]
+                    if user_ip not in all_ips:
+                         decode = data.decode(errors='ignore').strip()
+                         if decode.startswith("$nm:"):
+                              username = decode[4:]
+                              server_pub_bytes, server_private_key = crypto_main.generateDHKeys()
 
-               if addr not in [c['ip'] for c in server.clients]:
-                    decode = data.decode().strip()
-                    if decode.startswith("$nm:"):
-                         username = decode[4:]
-                         server.clients.append({'ip': addr, 'name': username})
-                         # Send Cipher to connected Client
-                         server_pub_bytes = crypto_main.generateDHKeys()
-                         server.server_sock.sendto(var.crypto_key_flag.encode() + server_pub_bytes, addr)
+                              if getattr(var, 'DEBUG', True):
+                                   print(f"\n{tag.info}Created a private key for {username} ({addr}).")
+                              # Send Cipher to connected Client
+                              server.clients.append({'ip': addr, 'name': username, 'private_key': server_private_key})
+                              server.server_sock.sendto(var.crypto_key_flag.encode() + server_pub_bytes, addr)
+                              continue
+
+                    if data.decode(errors='ignore') == "$nm:": # skip check if the user was connected before
                          continue
 
-               if data.decode() == "$nm:": # skip check if the user was connected before
+                    for c in server.clients:
+                         if(c['ip'] != addr):
+                              server.server_sock.sendto(data, c['ip'])
+
+                    print("\r\033[K", end="")
+                    print(f"{crypto_main.returnDecrypted(data)}")
+                    print(f"{serializer.INPUT_SYMBOL}", end="", flush=True)
+               except Exception as e:
+                    if getattr(var, 'DEBUG', True):
+                         print(f"{tag.error}Caught an exception while parsing packet content: {e}")
                     continue
-
-               for c in server.clients:
-                    if(c['ip'] != addr):
-                         server.server_sock.sendto(data, c['ip'])
-
-               print("\r\033[K", end="")
-               print(f"{crypto_main.returnDecrypted(data)}")
-               print(f"{serializer.INPUT_SYMBOL}", end="", flush=True)
 
           if client.Client:
                try:
                     data, addr = client.client_sock.recvfrom(packet.packetSize)
 
-                    if CheckMessage(data): # Intercepts bytes and check it on flag
+                    if CheckMessage(data, addr): # Intercepts bytes and check it on flag
                          continue 
 
                     print("\r\033[K", end="")
                     print(f"{crypto_main.returnDecrypted(data)}") # In the end cause check continue which is upper than sending
                     print(f"{serializer.INPUT_SYMBOL}", end="", flush=True)
 
-               except:
+               except Exception as e:
+                    if getattr(var, 'DEBUG', True):
+                         print(f"{tag.error}Caught client exception while receiving data: {e}")
                     continue

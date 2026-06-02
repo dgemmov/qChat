@@ -16,20 +16,20 @@ def setRoomKey(room_key_bytes: bytes):
     key_generation.key = room_key_bytes.decode()
     key_generation.cipher = Fernet(room_key_bytes)
 
-def generateDHKeys() -> bytes:
-    key_generation.private_key = ec.generate_private_key(ec.SECP256R1())
-    public_key = key_generation.private_key.public_key()
+def generateDHKeys() -> tuple:
+    private_key = ec.generate_private_key(ec.SECP256R1())
+    public_key = private_key.public_key()
     public_bytes = public_key.public_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PublicFormat.SubjectPublicKeyInfo
     )
-    return public_bytes  # send these bytes over the network
+    return public_bytes, private_key  # send these bytes over the network
 
-def deriveTemporaryKey(peer_public_bytes: bytes) -> Fernet:
+def deriveTemporaryKey(peer_public_bytes: bytes, private_key) -> Fernet:
     """Creates a TEMPORARY cipher used only to securely transfer the room key."""
     try:
         peer_public_key = serialization.load_pem_public_key(peer_public_bytes)
-        shared_secret = key_generation.private_key.exchange(ec.ECDH(), peer_public_key)
+        shared_secret = private_key.exchange(ec.ECDH(), peer_public_key)
         
         # derive clean 32 bytes for fernet via hkdf
         derived_key = HKDF(

@@ -8,6 +8,9 @@ parser.add_argument("-p", "--port", type=str, required=False, help="User connect
 args = parser.parse_args()
 
 if args.mode == "dev":
+     from src.host import var
+     var.DEBUG = True
+
      time.sleep(3)
      packet.port = int(args.port)
      user.NAME = "devClient"
